@@ -16,7 +16,49 @@
 // R5, L5, R5, R3 leaves you 12 blocks away.
 // How many blocks away is Easter Bunny HQ?
 
+// --- Part Two ---
+// Then, you notice the instructions continue on the back of the Recruiting Document. Easter Bunny HQ is actually at the first location you visit twice.
+//
+// For example, if your instructions are R8, R4, R4, R8, the first location you visit twice is 4 blocks away, due East.
+//
+// How many blocks away is the first location you visit twice?
+//
 const std = @import("std");
+const ArrayList = std.ArrayList;
+
+const Direction = enum(usize) {
+    North,
+    East,
+    Sourth,
+    West,
+};
+
+const LoR = enum {
+    Left,
+    Right,
+    None,
+};
+
+const Instruction = struct {
+    lor: LoR = LoR.None,
+    step: i32 = 0,
+};
+
+pub fn splitInst(instStr: []const u8) Instruction {
+    var inst = Instruction{};
+
+    switch (instStr[0]) {
+        'L' => inst.lor = LoR.Left,
+        'R' => inst.lor = LoR.Right,
+        else => {},
+    }
+
+    const numStr = instStr[1..instStr.len];
+
+    inst.step = std.fmt.parseInt(i32, numStr, 10) catch 0;
+
+    return inst;
+}
 
 pub fn main() !void {
     const file = try (try std.fs.cwd().openDir("day01", .{})).openFile("input", .{});
@@ -27,11 +69,45 @@ pub fn main() !void {
 
     const alloc = arena.allocator();
 
-    const content = try file.reader().readAllAlloc(alloc, 1024 * 1024);
+    const contentT = try file.reader().readAllAlloc(alloc, 1024 * 1024);
+    const content = contentT[0 .. contentT.len - 1]; // remove newline
+    // _ = content;
+    const contentTest = "R5, L5, R5, R3, R12";
+    _ = contentTest;
 
     var instruntions = std.mem.split(u8, content, ", ");
 
+    var direction = Direction.North;
+    var directionStep = [_]i32{0} ** 4;
+
     while (instruntions.next()) |i| {
-        std.debug.print("i:{s}\n", .{i});
+        // std.debug.print("i:{s}\n", .{i});
+        const inst = splitInst(i);
+        // std.debug.print("{}: {}\n", .{ inst.lor, inst.step });
+
+        const diInt = @intFromEnum(direction);
+        switch (inst.lor) {
+            LoR.Left => {
+                direction = @enumFromInt((diInt + 3) % 4);
+            },
+            LoR.Right => {
+                direction = @enumFromInt((diInt + 1) % 4);
+            },
+            LoR.None => std.debug.print("should never reach\n", .{}),
+        }
+
+        const diNewInt = @intFromEnum(direction);
+        directionStep[diNewInt] += inst.step;
     }
+
+    for (directionStep, 0..) |s, d| {
+        const di: Direction = @enumFromInt(d);
+        std.debug.print("{}: {}\n", .{ di, s });
+    }
+
+    const x = @abs(directionStep[1] - directionStep[3]);
+    const y = @abs(directionStep[0] - directionStep[2]);
+
+    const blocks = x + y;
+    std.debug.print("x:{}, y:{}, blocks:{}\n", .{ x, y, blocks });
 }
