@@ -70,6 +70,10 @@ pub fn splitInst(instStr: []const u8) Instruction {
     return inst;
 }
 
+pub fn onSegment(pt: Point, path: Path) bool {
+    return pt.x >= @min(path.start.x, path.end.x) and pt.x <= @max(path.start.x, path.end.x) and pt.y >= @min(path.start.y, path.end.y) and pt.y <= @max(path.start.y, path.end.y);
+}
+
 // https://www.cnblogs.com/xpvincent/p/5208994.html
 pub fn isIntersect(p1: Path, p2: Path) ?Point {
     const a1 = p1.end.y - p1.start.y;
@@ -89,7 +93,12 @@ pub fn isIntersect(p1: Path, p2: Path) ?Point {
         // const y = (a1 * c2 - a2 * c1) / det;
         const x = @divExact(c1 * b2 - c2 * b1, det);
         const y = @divExact(a1 * c2 - a2 * c1, det);
-        return Point{ .x = x, .y = y };
+        const p = Point{ .x = x, .y = y };
+        if (onSegment(p, p1) and onSegment(p, p2)) {
+            return p;
+        } else {
+            return null;
+        }
     }
 }
 
@@ -171,7 +180,7 @@ pub fn main() !void {
     const blocks = x + y;
     std.debug.print("x:{}, y:{}, blocks:{}\n", .{ x, y, blocks });
 
-    for (0..3) |i| {
+    for (0..5) |i| {
         const path = paths.items[i];
         std.debug.print("start({}, {}), end({}, {})\n", .{ path.start.x, path.start.y, path.end.x, path.end.y });
     }
@@ -179,19 +188,40 @@ pub fn main() !void {
     var intersectionX: i32 = 0;
     var intersectionY: i32 = 0;
 
-    for (0..paths.items.len) |i| {
+    outer: for (2..paths.items.len) |i| {
         const curPath = paths.items[i];
-        for (0..i) |j| {
+        for (0..i - 1) |j| {
+            // std.debug.print("path j {}\n", .{j});
             const comparePath = paths.items[j];
             const result = isIntersect(curPath, comparePath);
             if (result != null) {
+                std.debug.print("curPath idx:{} start({}, {}), end({}, {})\n", .{ i, curPath.start.x, curPath.start.y, curPath.end.x, curPath.end.y });
+                std.debug.print("comparePath idx:{} start({}, {}), end({}, {})\n", .{ j, comparePath.start.x, comparePath.start.y, comparePath.end.x, comparePath.end.y });
                 const pt = result.?;
                 intersectionY = pt.y;
                 intersectionX = pt.x;
-                break;
+                break :outer;
             }
         }
     }
 
-    std.debug.print("x:{}, y:{}/n", .{ intersectionX, intersectionY });
+    std.debug.print("x:{}, y:{}\n", .{ intersectionX, intersectionY });
+    std.debug.print("sum {}\n", .{@abs(intersectionX) + @abs(intersectionY)});
+
+    const p1 = Path{ .start = Point{ .x = 2, .y = 0 }, .end = Point{ .x = 2, .y = 10 } };
+    const p2 = Path{ .start = Point{ .x = -5, .y = 1 }, .end = Point{ .x = 5, .y = 1 } };
+    const result = isIntersect(p1, p2);
+    if (result != null) {
+        const pt = result.?;
+        std.debug.print("test x:{}, y:{}\n", .{ pt.x, pt.y });
+    } else {
+        std.debug.print("no intersect\n", .{});
+    }
+
+    const p = Point{ .x = 2, .y = 3 };
+    if (onSegment(p, p1)) {
+        std.debug.print("onSeg\n", .{});
+    } else {
+        std.debug.print("not onSeg\n", .{});
+    }
 }
