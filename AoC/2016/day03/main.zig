@@ -68,9 +68,9 @@ pub fn main() !void {
 
     var counter: i32 = 0;
     while (lines.next()) |l| {
-        std.debug.print("line: {s}\n", .{l});
+        // std.debug.print("line: {s}\n", .{l});
         const nums = splitNum(l);
-        std.debug.print("nums: {any}\n", .{nums});
+        // std.debug.print("nums: {any}\n", .{nums});
 
         var isTriangle = false;
         if (nums[0] < nums[1] + nums[2]) {
@@ -86,10 +86,59 @@ pub fn main() !void {
         }
 
         if (isTriangle) {
-            std.debug.print("good nums: {any}\n", .{nums});
+            // std.debug.print("good nums: {any}\n", .{nums});
             counter += 1;
         }
     }
 
     std.debug.print("num: {}\n", .{counter});
+
+    var numList = std.ArrayList(u32).init(alloc);
+
+    // part 2
+    counter = 0;
+    lines.reset();
+
+    while (lines.next()) |l| {
+        const nums = splitNum(l);
+        try numList.append(nums[0]);
+        try numList.append(nums[1]);
+        try numList.append(nums[2]);
+    }
+
+    var i: u32 = 0;
+    while (i < numList.items.len) : (i += 9) {
+        // std.debug.print("input 9 nums: {any}\n", .{numList.items[i .. i + 9]});
+
+        var triangle3 = [_][3]u32{.{0} ** 3} ** 3;
+
+        for (0..3) |j| {
+            const idx: usize = i + j;
+
+            triangle3[j][0] = numList.items[idx];
+            triangle3[j][1] = numList.items[idx + 3];
+            triangle3[j][2] = numList.items[idx + 6];
+        }
+
+        for (triangle3) |nums| {
+            // std.debug.print("nums: {any}\n", .{nums});
+            var isTriangle = false;
+            if (nums[0] < nums[1] + nums[2]) {
+                if (nums[1] >= nums[2]) {
+                    if (nums[0] + nums[2] > nums[1]) {
+                        isTriangle = true;
+                    }
+                } else {
+                    if (nums[0] + nums[1] > nums[2]) {
+                        isTriangle = true;
+                    }
+                }
+            }
+            if (isTriangle) {
+                counter += 1;
+            }
+        }
+    }
+
+    std.debug.print("part2 num: {}\n", .{counter});
 }
