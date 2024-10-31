@@ -13,6 +13,17 @@
 //
 // What is the sum of the sector IDs of the real rooms?
 //
+//--- Part Two ---
+// With all the decoy data out of the way, it's time to decrypt this list and get moving.
+//
+// The room names are encrypted by a state-of-the-art shift cipher, which is nearly unbreakable without the right software. However, the information kiosk designers at Easter Bunny HQ were not expecting to deal with a master cryptographer like yourself.
+//
+// To decrypt a room name, rotate each letter forward through the alphabet a number of times equal to the room's sector ID. A becomes B, B becomes C, Z becomes A, and so on. Dashes become spaces.
+//
+// For example, the real name for qzmt-zixmtkozy-ivhz-343 is very encrypted name.
+//
+// What is the sector ID of the room where North Pole objects are stored?
+
 const std = @import("std");
 const String = @import("string").String;
 const Allocator = std.mem.Allocator;
@@ -37,7 +48,7 @@ fn parse(in: []const u8, alloc: Allocator) !Room {
 
     for (parts[0 .. parts.len - 1]) |s| {
         try room.name.append(s);
-        std.debug.print("part: {s}\n", .{s.str()});
+        // std.debug.print("part: {s}\n", .{s.str()});
     }
 
     var tmp = parts[parts.len - 1];
@@ -47,8 +58,8 @@ fn parse(in: []const u8, alloc: Allocator) !Room {
     defer sector.deinit();
     var checksumStr = try tmp.substr(4, 9);
     defer checksumStr.deinit();
-    std.debug.print("sector: {s}\n", .{sector.str()});
-    std.debug.print("checksum: {s}\n", .{checksumStr.str()});
+    // std.debug.print("sector: {s}\n", .{sector.str()});
+    // std.debug.print("checksum: {s}\n", .{checksumStr.str()});
 
     room.sector = try std.fmt.parseInt(u32, sector.str(), 10);
     try room.checksum.setStr(checksumStr.str());
@@ -64,7 +75,7 @@ fn checksum(name: *const std.ArrayList(String), outStr: *String) !void {
             charCount[c - 'a'] += 1;
         }
     }
-    std.debug.print("char counter: {any}\n", .{charCount});
+    // std.debug.print("char counter: {any}\n", .{charCount});
 
     var checksumSlice = [_]u8{0} ** 5;
 
@@ -85,9 +96,23 @@ fn checksum(name: *const std.ArrayList(String), outStr: *String) !void {
         checksumSlice[i] = pos + 'a';
     }
 
-    std.debug.print("calcu checksum: {s}\n", .{checksumSlice});
+    // std.debug.print("calcu checksum: {s}\n", .{checksumSlice});
 
     try outStr.*.setStr(&checksumSlice);
+}
+
+fn decrypt(alloc: std.mem.Allocator, in: []const u8, forwardNum: i32) ![]u8 {
+    var tmpStr = try alloc.alloc(u8, in.len);
+
+    std.mem.copyForwards(u8, tmpStr, in);
+
+    for (tmpStr, 0..) |c, i| {
+        // std.debug.print("cb:{c}\n", .{c});
+        tmpStr[i] = @intCast(@mod(c - 'a' + forwardNum, 26) + 'a');
+        // std.debug.print("ca:{c}\n", .{tmpStr[i]});
+    }
+
+    return tmpStr;
 }
 
 pub fn main() !void {
@@ -109,8 +134,14 @@ pub fn main() !void {
 
     var i: u32 = 0;
     var count: i32 = 0;
+
+    const decryptedName = "northpole object storage ";
+    // var decryptedName =  String.init(alloc);
+    // defer decryptedName.deinit();
+    // decryptedName.setStr("North Pole objects ");
+
     while (lines.next()) |l| : (i += 1) {
-        std.debug.print("line: {s}\n", .{l});
+        // std.debug.print("line: {s}\n", .{l});
         const room = try parse(l, alloc);
 
         var checksumStr = String.init(alloc);
@@ -121,6 +152,22 @@ pub fn main() !void {
         if (room.checksum.cmp(checksumStr.str())) {
             count += @intCast(room.sector);
         }
+
+        var tmpName = String.init(alloc);
+        defer tmpName.deinit();
+
+        for (room.name.items) |p| {
+            const decrypted = try decrypt(alloc, p.str(), @intCast(room.sector));
+            defer alloc.free(decrypted);
+
+            try tmpName.concat(decrypted);
+            try tmpName.concat(" ");
+        }
+
+        // std.debug.print("decrypted name: {s}, id:{}\n", .{ tmpName.str(), room.sector });
+        if (tmpName.cmp(decryptedName)) {
+            std.debug.print("name: {s}, id:{}\n", .{ tmpName.str(), room.sector });
+        }
     }
     std.debug.print("count: {}\n", .{count});
 
@@ -128,4 +175,13 @@ pub fn main() !void {
     // defer str.deinit();
     // try str.concat("hi");
     // std.debug.print("str: {s}\n", .{str.str()});
+    //
+    const encryptedName = [_][]const u8{ "qzmt", "zixmtkozy", "ivhz" };
+    const num = 343;
+    for (encryptedName) |str| {
+        std.debug.print("orig: {s}\n", .{str});
+        const decrypted = try decrypt(alloc, str, num);
+        defer alloc.free(decrypted);
+        std.debug.print("de: {s}\n", .{decrypted});
+    }
 }

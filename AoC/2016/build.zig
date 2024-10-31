@@ -57,7 +57,7 @@ pub fn build(b: *std.Build) void {
     const day02_run_step = b.step("day02", "Run the application");
     day02_run_step.dependOn(&day02_run.step);
 
-    // day2
+    // day03
     const day03_exe = b.addExecutable(.{
         .name = "day03",
         .root_source_file = b.path("day03/main.zig"),
@@ -70,4 +70,23 @@ pub fn build(b: *std.Build) void {
 
     const day03_run_step = b.step("day03", "Run the application");
     day03_run_step.dependOn(&day03_run.step);
+
+    // day04
+    const day04_exe = b.addExecutable(.{
+        .name = "day04",
+        .root_source_file = b.path("day04/main.zig"),
+        .target = b.host,
+    });
+
+    const string = b.dependency("string", .{
+        .target = b.host,
+    });
+    day04_exe.root_module.addImport("string", string.module("string"));
+
+    b.installArtifact(day04_exe);
+
+    const day04_run = b.addRunArtifact(day04_exe);
+
+    const day04_run_step = b.step("day04", "Run the application");
+    day04_run_step.dependOn(&day04_run.step);
 }
