@@ -59,7 +59,36 @@ pub fn main() !void {
     const input = "ojvtpuvg";
     var num: i32 = 0;
     var passwd: [8]u8 = undefined;
-    var passWdPos: usize = 0;
+    // var passWdPos: usize = 0;
+    //
+    // while (true) : (num += 1) {
+    //     var buffer: [256]u8 = undefined;
+    //
+    //     const tohash = try std.fmt.bufPrint(&buffer, "{s}{d}", .{ input, num });
+    //     // std.debug.print("input[{}]: {s}\n", .{ tohash.len, tohash });
+    //
+    //     var output: [std.crypto.hash.Md5.digest_length]u8 = undefined;
+    //     std.crypto.hash.Md5.hash(tohash, &output, .{});
+    //
+    //     const first6 = try std.fmt.bufPrint(&buffer, "{x:0>2}{x:0>2}{x:0>2}", .{ output[0], output[1], output[2] });
+    //
+    //     if (std.mem.allEqual(u8, first6[0..5], '0')) {
+    //         passwd[passWdPos] = first6[5];
+    //         passWdPos += 1;
+    //         if (passWdPos == 8) {
+    //             break;
+    //         }
+    //     }
+    // }
+    //
+    // // std.debug.print("passwd: {s}\n", passwd[0..passwd.len]);
+    // std.debug.print("passwd: {s}\n", .{passwd});
+
+    // part two
+    num = 0;
+    passwd = std.mem.zeroes([8]u8);
+    var posSet = [_]bool{false} ** 8;
+    var passWdCount: i32 = 0;
 
     while (true) : (num += 1) {
         var buffer: [256]u8 = undefined;
@@ -70,12 +99,26 @@ pub fn main() !void {
         var output: [std.crypto.hash.Md5.digest_length]u8 = undefined;
         std.crypto.hash.Md5.hash(tohash, &output, .{});
 
-        const first6 = try std.fmt.bufPrint(&buffer, "{x:0>2}{x:0>2}{x:0>2}", .{ output[0], output[1], output[2] });
+        const first8 = try std.fmt.bufPrint(&buffer, "{x:0>2}{x:0>2}{x:0>2}{x:0>2}", .{ output[0], output[1], output[2], output[3] });
 
-        if (std.mem.allEqual(u8, first6[0..5], '0')) {
-            passwd[passWdPos] = first6[5];
-            passWdPos += 1;
-            if (passWdPos == 8) {
+        if (std.mem.allEqual(u8, first8[0..5], '0')) {
+            var tmp = [1]u8{0};
+            tmp[0] = first8[5];
+            const passWdPos = std.fmt.parseInt(usize, &tmp, 10) catch 10;
+
+            if (passWdPos > 7) {
+                continue;
+            }
+
+            if (posSet[passWdPos]) {
+                continue;
+            }
+
+            passwd[passWdPos] = first8[6];
+            posSet[passWdPos] = true;
+
+            passWdCount += 1;
+            if (passWdCount == 8) {
                 break;
             }
         }
