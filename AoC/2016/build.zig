@@ -117,4 +117,18 @@ pub fn build(b: *std.Build) void {
 
     const day06_run_step = b.step("day06", "Run the application");
     day06_run_step.dependOn(&day06_run.step);
+
+    // day07
+    const day07_exe = b.addExecutable(.{
+        .name = "day07",
+        .root_source_file = b.path("day07/main.zig"),
+        .target = b.host,
+    });
+
+    b.installArtifact(day07_exe);
+
+    const day07_run = b.addRunArtifact(day07_exe);
+
+    const day07_run_step = b.step("day07", "Run the application");
+    day07_run_step.dependOn(&day07_run.step);
 }

@@ -37,8 +37,11 @@
 const std = @import("std");
 
 pub fn main() !void {
-    std.debug.print("day05!\n", .{});
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    std.debug.print("day06!\n", .{});
+    // var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer std.debug.assert(gpa.deinit() == .ok);
+    var arena = std.heap.ArenaAllocator.init(gpa.allocator());
     defer arena.deinit();
 
     const alloc = arena.allocator();
@@ -82,7 +85,7 @@ pub fn main() !void {
     }
     lines.reset();
 
-    var counterArena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    var counterArena = std.heap.ArenaAllocator.init(gpa.allocator());
     defer counterArena.deinit();
     const counterAlloc = counterArena.allocator();
 
