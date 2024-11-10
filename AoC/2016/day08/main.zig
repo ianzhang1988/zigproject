@@ -199,6 +199,10 @@ fn regexTest(alloc: std.mem.Allocator) !void {
     }
 }
 
+fn makeStaticGrid(T: anytype, default: T, comptime wide: u32, comptime height: u32) [height][wide]T {
+    return .{.{default} ** wide} ** height;
+}
+
 pub fn main() !void {
     std.debug.print("day08!\n", .{});
     tagUnion();
@@ -228,4 +232,8 @@ pub fn main() !void {
         std.debug.print("istruction: {any}\n", .{instrction});
         try instrctions.append(instrction);
     }
+
+    var screen = makeStaticGrid(bool, false, 50, 6);
+    screen[0][0] = false;
+    std.debug.print("screen height:{} width:{}\n", .{ screen.len, screen[0].len });
 }
