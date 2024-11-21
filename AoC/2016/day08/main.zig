@@ -36,6 +36,10 @@
 //
 // There seems to be an intermediate check of the voltage used by the display: after you swipe your card, if the screen did work, how many pixels should be lit?
 //
+// ------ part two
+//You notice that the screen is only capable of displaying capital letters; in the font it uses, each letter is 5 pixels wide and 6 tall.
+//
+// After you swipe your card, what code is the screen trying to display?
 
 const std = @import("std");
 const Regex = @import("regex").Regex;
@@ -72,44 +76,17 @@ const Rotate = union(enum) {
 
     pub fn parse(alloc: std.mem.Allocator, in: []const u8) !?Rotate {
         {
-            var re = try Regex.compile(alloc, "rotate column x=(\\d+) by (\\d+)");
-            const capOp = try re.captures(in);
-
-            if (capOp != null) {
-                var params: [2]u32 = .{ 0, 0 };
-
-                const cap = capOp.?;
-
-                for (0..2) |i| {
-                    const numOp = cap.sliceAt(i + 1);
-                    if (numOp == null) {
-                        continue;
-                    }
-                    // std.debug.print("column num: {s}\n", .{numOp.?});
-                    params[i] = try std.fmt.parseInt(u32, numOp.?, 10);
-                }
-
+            var params: [2]u32 = .{ 0, 0 };
+            const ok = try extract(alloc, "rotate column x=(\\d+) by (\\d+)", in, u32, 2, &params);
+            if (ok) {
                 return Rotate{ .Column = params };
             }
         }
 
         {
-            var re = try Regex.compile(alloc, "rotate row y=(\\d+) by (\\d+)");
-            const capOp = try re.captures(in);
-
-            if (capOp != null) {
-                var params: [2]u32 = .{ 0, 0 };
-
-                const cap = capOp.?;
-
-                for (0..2) |i| {
-                    const numOp = cap.sliceAt(i + 1);
-                    if (numOp == null) {
-                        continue;
-                    }
-                    params[i] = try std.fmt.parseInt(u32, numOp.?, 10);
-                }
-
+            var params: [2]u32 = .{ 0, 0 };
+            const ok = try extract(alloc, "rotate row y=(\\d+) by (\\d+)", in, u32, 2, &params);
+            if (ok) {
                 return Rotate{ .Row = params };
             }
         }
@@ -123,25 +100,6 @@ const Instruction = union(enum) {
     Rotate: Rotate,
 
     pub fn parse(alloc: std.mem.Allocator, in: []const u8) !?Instruction {
-        // var re = try Regex.compile(alloc, "rect (\\d+)x(\\d+)");
-        // const capOp = try re.captures(in);
-        //
-        // if (capOp != null) {
-        //     var params: [2]u32 = .{ 0, 0 };
-        //
-        //     const cap = capOp.?;
-        //
-        //     for (0..2) |i| {
-        //         const numOp = cap.sliceAt(i + 1);
-        //         if (numOp == null) {
-        //             continue;
-        //         }
-        //         // std.debug.print("rect num: {s}\n", .{numOp.?});
-        //         params[i] = try std.fmt.parseInt(u32, numOp.?, 10);
-        //     }
-        //
-        //     return Instruction{ .Rect = params };
-        // }
         {
             var params: [2]u32 = .{ 0, 0 };
             const ok = try extract(alloc, "rect (\\d+)x(\\d+)", in, u32, 2, &params);
@@ -199,13 +157,98 @@ fn regexTest(alloc: std.mem.Allocator) !void {
     }
 }
 
+fn StaticGrid(comptime T: anytype, default: T, comptime wide: u32, comptime height: u32) type {
+    return struct {
+        grid: [height][wide]T,
+        width: u32,
+        height: u32,
+
+        const Self = @This();
+
+        fn init() Self {
+            return Self{ .grid = .{.{default} ** wide} ** height, .width = wide, .height = height };
+        }
+
+        fn clear(self: *Self) void {
+            for (self.grid, 0..) |row, y| {
+                for (row, 0..) |_, x| {
+                    self.grid[y][x] = default;
+                }
+            }
+        }
+
+        fn putRect(self: *Self, rectW: u32, rectH: u32) void {
+            for (0..rectH) |y| {
+                for (0..rectW) |x| {
+                    self.grid[y][x] = true;
+                }
+            }
+        }
+
+        fn rotateRow(self: *Self, y: u32, num: u32) void {
+            var tempRow: [wide]T = .{default} ** wide;
+            for (self.grid[y], 0..) |value, i| {
+                tempRow[@mod((i + num), wide)] = value;
+            }
+            self.grid[y] = tempRow;
+        }
+
+        fn rotateColumn(self: *Self, x: u32, num: u32) void {
+            var tempCol: [height]T = .{default} ** height;
+            for (0..height) |y| {
+                const value = self.grid[y][x];
+                tempCol[@mod((y + num), height)] = value;
+            }
+
+            for (0..height) |y| {
+                self.grid[y][x] = tempCol[y];
+            }
+        }
+
+        fn show(self: *Self) void {
+            for (self.grid, 0..) |row, y| {
+                for (row, 0..) |_, x| {
+                    const value = self.grid[y][x];
+                    var char: u8 = 0;
+                    if (value) {
+                        char = '#';
+                    } else {
+                        char = '.';
+                    }
+                    std.debug.print("{c}", .{char});
+                }
+                std.debug.print("\n", .{});
+            }
+        }
+    };
+}
+
 fn makeStaticGrid(T: anytype, default: T, comptime wide: u32, comptime height: u32) [height][wide]T {
     return .{.{default} ** wide} ** height;
+}
+
+fn testGrid() void {
+    var screen = StaticGrid(bool, false, 7, 3).init();
+    std.debug.print("screen height:{} width:{}\n", .{ screen.height, screen.width });
+    screen.putRect(3, 2);
+    screen.show();
+    std.debug.print("----------------\n", .{});
+    screen.rotateColumn(1, 1);
+    screen.show();
+    std.debug.print("----------------\n", .{});
+    screen.rotateRow(0, 4);
+    screen.show();
+    std.debug.print("----------------\n", .{});
+    screen.rotateColumn(1, 1);
+    screen.show();
+    std.debug.print("----------------\n", .{});
 }
 
 pub fn main() !void {
     std.debug.print("day08!\n", .{});
     tagUnion();
+
+    testGrid();
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer std.debug.assert(gpa.deinit() == .ok);
@@ -227,13 +270,42 @@ pub fn main() !void {
 
     var instrctions = std.ArrayList(Instruction).init(alloc);
     while (lines.next()) |l| {
-        std.debug.print("line: {s}\n", .{l});
+        // std.debug.print("line: {s}\n", .{l});
         const instrction = (try Instruction.parse(alloc, l)).?;
-        std.debug.print("istruction: {any}\n", .{instrction});
+        // std.debug.print("istruction: {any}\n", .{instrction});
         try instrctions.append(instrction);
     }
 
-    var screen = makeStaticGrid(bool, false, 50, 6);
-    screen[0][0] = false;
-    std.debug.print("screen height:{} width:{}\n", .{ screen.len, screen[0].len });
+    var screen = StaticGrid(bool, false, 50, 6).init();
+    for (instrctions.items) |i| {
+        switch (i) {
+            Instruction.Rect => |x| {
+                // std.debug.print("rect {}x{}\n", .{ x[0], x[1] });
+                screen.putRect(x[0], x[1]);
+            },
+            Instruction.Rotate => |r| {
+                switch (r) {
+                    Rotate.Row => |x| {
+                        screen.rotateRow(x[0], x[1]);
+                    },
+                    Rotate.Column => |x| {
+                        screen.rotateColumn(x[0], x[1]);
+                    },
+                }
+            },
+        }
+    }
+
+    // count true
+    var sum: u32 = 0;
+    for (0..screen.height) |y| {
+        for (0..screen.width) |x| {
+            if (screen.grid[y][x]) {
+                sum += 1;
+            }
+        }
+    }
+
+    std.debug.print("lit: {}\n", .{sum});
+    screen.show();
 }
