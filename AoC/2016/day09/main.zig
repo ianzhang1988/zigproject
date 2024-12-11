@@ -17,9 +17,67 @@
 
 const std = @import("std");
 // const String = @import("string").String;
+//
+const myError = error{
+    MalFormat,
+};
 
 fn decode(in: []const u8, out: *std.ArrayList(u8)) !void {
-    try out.*.appendSlice(in[0..10]);
+    // try out.*.appendSlice(in[0..1]);
+
+    var poslp: usize = 0;
+    var posrp: usize = 0;
+
+    var processedPos: usize = 0;
+
+    while (processedPos < in.len) {
+        if (in[processedPos] == '(') {
+            poslp = processedPos;
+            posrp = processedPos + 1;
+
+            while (in[posrp] != ')' and posrp < in.len) {
+                posrp += 1;
+            }
+
+            if (posrp == in.len) {
+                return myError.MalFormat;
+            }
+
+            const ins = in[poslp + 1 .. posrp];
+            std.debug.print("ins: {s}\n", .{ins});
+            var parts = std.mem.split(u8, ins, "x");
+
+            const range = parts.next().?;
+            std.debug.print("range: {s}\n", .{range});
+            const repeatRange = try std.fmt.parseInt(usize, range, 10);
+
+            const times = parts.next().?;
+            std.debug.print("times: {s}\n", .{times});
+            const repeatTimes = try std.fmt.parseInt(usize, times, 10);
+
+            for (0..repeatTimes) |_| {
+                try out.*.appendSlice(in[posrp + 1 .. posrp + 1 + repeatRange]);
+            }
+
+            processedPos = posrp + 1 + repeatRange;
+        } else {
+            try out.*.append(in[processedPos]);
+            processedPos += 1;
+        }
+    }
+}
+
+fn mytest(alloc: std.mem.Allocator) !void {
+    const dataList = [_][]const u8{ "ADVENT", "A(1x5)BC", "(3x3)XYZ", "A(2x2)BCD(2x2)EFG", "(6x1)(1x3)A", "X(8x2)(3x3)ABCY" };
+
+    for (dataList) |i| {
+        std.debug.print("code: {s}\n", .{i});
+        var decompressed = std.ArrayList(u8).init(alloc);
+
+        try decode(i, &decompressed);
+
+        std.debug.print("decode: {s}\n", .{decompressed.items});
+    }
 }
 
 pub fn main() !void {
@@ -31,6 +89,8 @@ pub fn main() !void {
     defer arena.deinit();
 
     const alloc = arena.allocator();
+
+    try mytest(alloc);
 
     // const file = try (try std.fs.cwd().openDir("day04", .{})).openFile("test", .{});
     const file = try (try std.fs.cwd().openDir("day09", .{})).openFile("input", .{});
@@ -46,5 +106,6 @@ pub fn main() !void {
 
     try decode(content, &decompressed);
 
-    std.debug.print("decompressed string: {s}\n", .{decompressed.items});
+    // std.debug.print("decompressed string: {s}\n", .{decompressed.items});
+    std.debug.print("decompressed string len: {}\n", .{decompressed.items.len});
 }
