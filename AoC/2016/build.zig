@@ -165,4 +165,31 @@ pub fn build(b: *std.Build) void {
 
     const day09_run_step = b.step("day09", "Run the application");
     day09_run_step.dependOn(&day09_run.step);
+
+    // day10
+    const day10_exe = b.addExecutable(.{
+        .name = "day10",
+        .root_source_file = b.path("day10/main.zig"),
+        .target = b.host,
+    });
+
+    day10_exe.root_module.addImport("regex", regex.module("regex"));
+    b.installArtifact(day10_exe);
+
+    const day10_run = b.addRunArtifact(day10_exe);
+
+    const day10_run_step = b.step("day10", "Run the application");
+    day10_run_step.dependOn(&day10_run.step);
+
+    // sos
+    const sos = b.addExecutable(.{
+        .name = "sos",
+        .root_source_file = b.path("day10/sos.zig"),
+        .target = b.host,
+    });
+
+    const sos_run = b.addRunArtifact(sos);
+
+    const sos_run_step = b.step("sos", "Run the application");
+    sos_run_step.dependOn(&sos_run.step);
 }
