@@ -9,8 +9,12 @@ pub fn makeSliceOfStrings(comptime num: usize, comptime size: usize) type {
         fba: std.heap.FixedBufferAllocator = undefined,
         allocator: std.mem.Allocator = undefined,
 
-        pub fn new() !Self {
-            var self = Self{ .buffer = .{0} ** (num * size + num * @sizeOf([]u8)) };
+        // only work in return Self{}, not self= Self{} return self, this cause dangling pointer.
+        pub fn new() Self {
+            return Self{ .buffer = .{0} ** (num * size + num * @sizeOf([]u8)) };
+        }
+
+        pub fn init(self: *Self) !void {
             std.debug.print("buffer addr: {*}\n", .{&self.buffer});
             std.debug.print("buffer: {any}\n", .{self.buffer});
 
@@ -29,15 +33,13 @@ pub fn makeSliceOfStrings(comptime num: usize, comptime size: usize) type {
             }
 
             std.debug.print("buffer 2: {any}\n", .{self.buffer});
-
-            return self;
         }
 
         pub fn clear(self: *Self) void {
             std.debug.print("clear data addr: {*}\n", .{self.data.ptr});
             for (self.data, 0..) |_, idx| {
                 std.debug.print("clear data[{d}] fatptr addr:{*} addr: {*} len:{d}\n", .{ idx, &(self.data[idx]), self.data[idx].ptr, self.data[idx].len });
-                // @memset(self.data[idx], 0);
+                @memset(self.data[idx], 0);
             }
             std.debug.print("buffer 3: {any}\n", .{self.buffer});
         }
@@ -81,7 +83,8 @@ pub fn makeSliceOfStrings(comptime num: usize, comptime size: usize) type {
 fn doSomething(_: [][]u8) void {}
 
 pub fn main() !void {
-    var sos = try makeSliceOfStrings(3, 32).new();
+    var sos = makeSliceOfStrings(3, 32).new();
+    try sos.init();
     sos.clear();
 
     std.debug.print("data len:{d} ptr:{*}\n", .{ sos.data.len, sos.data.ptr });

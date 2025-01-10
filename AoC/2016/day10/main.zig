@@ -123,7 +123,7 @@ fn extract(alloc: std.mem.Allocator, comptime regex: []const u8, in: []const u8,
 //     return sos;
 // }
 
-fn makeSliceOfStrings(comptime num: usize, comptime size: usize) type {
+pub fn makeSliceOfStrings(comptime num: usize, comptime size: usize) type {
     return struct {
         const Self = @This();
 
@@ -132,37 +132,28 @@ fn makeSliceOfStrings(comptime num: usize, comptime size: usize) type {
         fba: std.heap.FixedBufferAllocator = undefined,
         allocator: std.mem.Allocator = undefined,
 
-        pub fn new() !Self {
-            var self = Self{ .buffer = .{0} ** (num * size + num * @sizeOf([]u8)) };
-            std.debug.print("buffer addr: {*}\n", .{&self.buffer});
-            std.debug.print("buffer: {any}\n", .{self.buffer});
+        // only work in return Self{}, not self= Self{} return self, this cause dangling pointer.
+        pub fn new() Self {
+            return Self{ .buffer = .{0} ** (num * size + num * @sizeOf([]u8)) };
+        }
 
+        pub fn init(self: *Self) !void {
             self.fba = std.heap.FixedBufferAllocator.init(&self.buffer);
             self.allocator = self.fba.allocator();
 
             self.data = try self.allocator.alloc([]u8, num);
-            std.debug.print("data addr: {*}\n", .{self.data.ptr});
 
             for (self.data, 0..) |_, idx| {
                 const datatmp = try self.allocator.alloc(u8, size);
 
-                std.debug.print("buffer[{d}]  data addr: {*}\n", .{ idx, datatmp.ptr });
                 self.data[idx] = datatmp;
-                std.debug.print("sos buffer[{d}] fatptr addr:{*} addr: {*} len:{d}\n", .{ idx, &(self.data[idx]), self.data[idx].ptr, self.data[idx].len });
             }
-
-            std.debug.print("buffer 2: {any}\n", .{self.buffer});
-
-            return self;
         }
 
         pub fn clear(self: *Self) void {
-            std.debug.print("clear data addr: {*}\n", .{self.data.ptr});
             for (self.data, 0..) |_, idx| {
-                std.debug.print("clear buffer[{d}] fatptr addr:{*} addr: {*} len:{d}\n", .{ idx, &(self.data[idx]), self.data[idx].ptr, self.data[idx].len });
-                // @memset(self.data[idx], 0);
+                @memset(self.data[idx], 0);
             }
-            std.debug.print("buffer 3: {any}\n", .{self.buffer});
         }
     };
 }
@@ -180,23 +171,18 @@ pub fn parse(alloc: std.mem.Allocator, line: []const u8) !void {
     //     std.debug.print("chip:{s}, bot:{s}\n", .{ data[0], data[1] });
     // }
 
-    var sos = try makeSliceOfStrings(10, 32).new();
+    var sos = makeSliceOfStrings(10, 32).new();
+    try sos.init();
     sos.clear();
-
-    std.debug.print("data len:{d}\n", .{sos.data.len});
-
-    for (sos.data, 0..) |s, idx| {
-        std.debug.print("idx:{d}, len:{d}, type:{?}\n", .{ idx, s.len, @TypeOf(s) });
-        // std.debug.print("data:{s}\n", .{s});
-    }
 
     if (try extract(alloc, "value (\\d+) goes to bot (\\d+)", line, 2, &sos.data)) {
         std.debug.print("chip:{s}, bot:{s}\n", .{ sos.data[0], sos.data[1] });
     }
 
-    // if (try extract(alloc, "bot (\\d+) gives low to (\\w+) (\\d+) and high to (\\w+) (\\d+)", line, 5, &data)) {
-    //     std.debug.print("bot:{s} low-{s} chip:{s}, high-{s} chip:{s}\n", .{ data[0], data[1], data[2], data[3], data[4] });
-    // }
+    sos.clear();
+    if (try extract(alloc, "bot (\\d+) gives low to (\\w+) (\\d+) and high to (\\w+) (\\d+)", line, 5, &sos.data)) {
+        std.debug.print("bot:{s} low-{s} chip:{s}, high-{s} chip:{s}\n", .{ sos.data[0], sos.data[1], sos.data[2], sos.data[3], sos.data[4] });
+    }
 }
 
 pub fn main() !void {
@@ -230,7 +216,7 @@ pub fn main() !void {
     c = 0;
     lines.reset();
     while (lines.next()) |l| : (c += 1) {
-        if (c > 0) {
+        if (c > 20) {
             break;
         }
         try parse(alloc, l);
