@@ -192,4 +192,16 @@ pub fn build(b: *std.Build) void {
 
     const sos_run_step = b.step("sos", "Run the application");
     sos_run_step.dependOn(&sos_run.step);
+
+    // sos2
+    const sos2 = b.addExecutable(.{
+        .name = "sos2",
+        .root_source_file = b.path("day10/sos2.zig"),
+        .target = b.host,
+    });
+
+    const sos2_run = b.addRunArtifact(sos2);
+
+    const sos2_run_step = b.step("sos2", "Run the application");
+    sos2_run_step.dependOn(&sos2_run.step);
 }
