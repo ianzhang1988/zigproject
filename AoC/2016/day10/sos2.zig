@@ -19,6 +19,11 @@ fn ManyBuffer(comptime num: u32, comptime size: u32) type {
             var self: Self = undefined;
             // + give them value
             self.reset();
+
+            // is this inlined or something, why self is not a dangling pointer?
+            // maybe keyward undefined gives some special operation
+            //
+            // tried in sos.zig not var self: Self = undefined; not realy work.
             return self;
         }
 

@@ -43,6 +43,32 @@ pub fn makeSliceOfStrings(comptime num: usize, comptime size: usize) type {
             }
             std.debug.print("buffer 3: {any}\n", .{self.buffer});
         }
+
+        // var self: Self = undefined; this not work.
+        // just use 'two stage new' so I can easily reason with.
+        pub fn new2() !Self {
+            var self: Self = undefined;
+
+            std.debug.print("buffer addr: {*}\n", .{&self.buffer});
+            std.debug.print("buffer: {any}\n", .{self.buffer});
+
+            self.fba = std.heap.FixedBufferAllocator.init(&self.buffer);
+            self.allocator = self.fba.allocator();
+
+            self.data = try self.allocator.alloc([]u8, num);
+            std.debug.print("data addr: {*}\n", .{self.data.ptr});
+
+            for (self.data, 0..) |_, idx| {
+                const datatmp = try self.allocator.alloc(u8, size);
+
+                // std.debug.print("data[{d}]  data addr: {*}\n", .{ idx, datatmp.ptr });
+                self.data[idx] = datatmp;
+                std.debug.print("sos data[{d}] fatptr addr:{*} addr: {*} len:{d}\n", .{ idx, &(self.data[idx]), self.data[idx].ptr, self.data[idx].len });
+            }
+
+            std.debug.print("buffer 2: {any}\n", .{self.buffer});
+            return self;
+        }
     };
 }
 
@@ -83,9 +109,12 @@ pub fn makeSliceOfStrings(comptime num: usize, comptime size: usize) type {
 fn doSomething(_: [][]u8) void {}
 
 pub fn main() !void {
-    var sos = makeSliceOfStrings(3, 32).new();
-    try sos.init();
-    sos.clear();
+    // var sos = makeSliceOfStrings(3, 32).new();
+    // try sos.init();
+    // sos.clear();
+
+    var sos = try makeSliceOfStrings(3, 32).new2();
+    // sos.clear();
 
     std.debug.print("data len:{d} ptr:{*}\n", .{ sos.data.len, sos.data.ptr });
 
